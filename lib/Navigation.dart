@@ -22,7 +22,7 @@ Future<String> getPath(String from, String to, String out) async {
   java.stdin.writeln(1);
   java.stdin.writeln("$from -> $to");
 
-  java.stderr.transform(utf8.decoder).forEach(print);
+  // java.stderr.transform(utf8.decoder).forEach(print);
 
   return java.stdout.transform(utf8.decoder).first;
 }

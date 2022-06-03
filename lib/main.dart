@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_assigment_project/Histogram.dart';
 import 'package:flutter_assigment_project/Navigation.dart';
 
 void main() async {
@@ -24,14 +25,14 @@ class MyApp extends StatelessWidget {
 class MyHomePage extends StatefulWidget {
   const MyHomePage({Key? key}) : super(key: key);
 
-  final pages = const [NavigationWidget(), NavigationWidget(), NavigationWidget()];
+  final pages = const [NavigationWidget(), NavigationWidget(), HistogramWidget()];
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int selectedPage = 1;
+  int selectedPage = 2;
 
   @override
   Widget build(BuildContext context) {

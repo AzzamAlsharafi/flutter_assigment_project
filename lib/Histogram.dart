@@ -4,25 +4,56 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
-Future<String> getOut(testcase) async {
+Future<String> getOutAndAnswer(testcase) async {
   Process python = await Process.start('python', ['tasks/histogram/run.py']);
 
-  python.stdin.writeln(testcase);
+  // python.stdin.writeln(testcase);
 
-  return python.stdout.transform(utf8.decoder).first;
+  final String out = await python.stdout.transform(utf8.decoder).first;
+
+  Process java = await Process.start('java', ['solutions\\Histogram.java']);
+
+  java.stdin.writeln(out);
+
+  final String answer = await java.stdout.transform(utf8.decoder).first;
+
+  return "$out SEPERATOR $answer";
 }
 
-Future<String> getPath(String from, String to, String out) async {
-  // Process.run('javac', ['solutions\\Navigation.java'], runInShell: true);
+class HistogramWidget extends StatefulWidget {
+  const HistogramWidget({Key? key}) : super(key: key);
 
-  Process java = await Process.start('java', ['solutions\\Navigation.java']);
+  @override
+  State<HistogramWidget> createState() => _HistogramWidgetState();
+}
 
-  List<String> split = out.split("\r\n");
-  java.stdin.writeln(split.getRange(0, split.length - 3).join("\r\n"));
-  java.stdin.writeln(1);
-  java.stdin.writeln("$from -> $to");
+class _HistogramWidgetState extends State<HistogramWidget> {
+  List<Histogram> histograms = [];
+  int selectedHistogram = 0;
 
-  java.stderr.transform(utf8.decoder).forEach(print);
+  @override
+  Widget build(BuildContext context) {
+    if (histograms.length < 10) {
+      getOutAndAnswer(histograms.length).then(
+        (value) => setState(() {
+          print(value);
+          histograms.add(Histogram(value));
+        }),
+      );
+    }
 
-  return java.stdout.transform(utf8.decoder).first;
+    return Container(
+      child:
+          Text(histograms.isEmpty ? "" : histograms[selectedHistogram].answer),
+    );
+  }
+}
+
+class Histogram {
+  Histogram(this.outAndAnswer);
+
+  final String outAndAnswer;
+
+  String get out => outAndAnswer.split("SEPERATOR")[0];
+  String get answer => outAndAnswer.split("SEPERATOR")[1];
 }
