@@ -227,6 +227,7 @@ class Painter extends CustomPainter {
 
     Offset firstBarOffset = const Offset(10, 0);
     Offset barWidth = (xAxis - (firstBarOffset * 2.0)) / bars.length.toDouble();
+    barWidth = Offset(max(barWidth.dx, 15), 0.0);
 
     double borderWidth = 1;
     Offset borderOffset = Offset(borderWidth, -borderWidth);
