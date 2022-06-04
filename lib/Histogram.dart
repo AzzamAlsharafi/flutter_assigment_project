@@ -212,7 +212,7 @@ class Painter extends CustomPainter {
     final cutoffs = split[0].split(" ").map((e) => int.parse(e)).toList();
     final bars = split[1].split(" ").map((e) => double.parse(e)).toList();
 
-    Offset corner = Offset(0, 0);
+    Offset corner = Offset(100, 500);
 
     Offset yAxis = Offset(0, -400);
     Offset xAxis = Offset(1000, 0);
@@ -277,7 +277,7 @@ class Painter extends CustomPainter {
 
       Offset textStart;
       if (barWidth.dx < 50) {
-        textStart = corner +
+        textStart = Offset(corner.dy, -corner.dx) +
             Offset(30, - (20 - barWidth.dx) -(firstBarOffset + (barWidth * (i + 1).toDouble())).dx);
         canvas.rotate(90 * pi / 180);
       } else {
@@ -314,7 +314,7 @@ class Painter extends CustomPainter {
     canvas.save();
 
     if (barWidth.dx < 50) {
-      textStart = corner +
+      textStart = Offset(corner.dy, -corner.dx) +
           Offset(30,  - (20 - barWidth.dx) 
               -(firstBarOffset + (barWidth * (bars.length + 1).toDouble())).dx);
       canvas.rotate(90 * pi / 180);
