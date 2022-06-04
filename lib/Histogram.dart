@@ -220,12 +220,14 @@ class Painter extends CustomPainter {
     Offset yTickSize = Offset(-10, 0);
     Offset yTickDistance = Offset(0, -40);
     Offset yTextOffset = Offset(-40, -10);
-    List<double> yTicks = List.generate(11, (index) => index * 100);
+
+    double greatest = max(bars.reduce(max), 1000);
+    greatest = ((greatest ~/ 1000) + (greatest % 1000 > 0 ? 1 : 0)) * 1000.0;
+
+    List<double> yTicks = List.generate(11, (index) => index * (greatest / 10));
 
     Offset firstBarOffset = Offset(10, 0);
     Offset barWidth = (xAxis - (firstBarOffset * 2.0)) / bars.length.toDouble();
-
-    print(barWidth);
 
     double borderWidth = 1;
     Offset borderOffset = Offset(borderWidth, -borderWidth);
