@@ -15,19 +15,21 @@ Future<void> getOutAndAnswer(testcase, _HistogramWidgetState state) async {
   String out = "";
   String answer = "";
 
-  python.stdout.listen((event) {
-    out = String.fromCharCodes(event);
+  python.stdout.listen(
+    (event) {
+      out = String.fromCharCodes(event);
 
-    java.stdin.write(out);
+      java.stdin.write(out);
 
-    result += out;
-  }, onDone: () {
-    state.setState(() {
-      state.widget.histograms.addAll(Histogram.getHistos(result));
-    });
-  },);
+      result += out;
+    },
+    onDone: () {
+      state.setState(() {
+        state.widget.histograms.addAll(Histogram.getHistos(result));
+      });
+    },
+  );
 
-  
   java.stdout.listen((event) {
     answer = String.fromCharCodes(event);
 
@@ -85,9 +87,14 @@ class _HistogramWidgetState extends State<HistogramWidget> {
           minScale: 0.5,
           constrained: false,
           boundaryMargin: const EdgeInsets.all(1000),
-          child: Chart(widget.histograms.isEmpty
-              ? Histogram("")
-              : widget.histograms[selectedHistogram], key: ValueKey(widget.histograms.isEmpty ? "" : widget.histograms[selectedHistogram].outAndAnswer),),
+          child: Chart(
+            widget.histograms.isEmpty
+                ? Histogram("")
+                : widget.histograms[selectedHistogram],
+            key: ValueKey(widget.histograms.isEmpty
+                ? ""
+                : widget.histograms[selectedHistogram].outAndAnswer),
+          ),
         ),
         SizedBox.expand(
           child: Column(
@@ -153,7 +160,9 @@ class _HistogramWidgetState extends State<HistogramWidget> {
                                       child: SelectableText(
                                         widget.histograms.isEmpty
                                             ? ""
-                                            : widget.histograms[selectedHistogram].outWithoutExtra,
+                                            : widget
+                                                .histograms[selectedHistogram]
+                                                .outWithoutExtra,
                                         style: const TextStyle(fontFamily: ''),
                                       ),
                                     ),
@@ -203,7 +212,7 @@ class Painter extends CustomPainter {
     final cutoffs = split[0].split(" ").map((e) => int.parse(e)).toList();
     final bars = split[1].split(" ").map((e) => double.parse(e)).toList();
 
-    Offset corner = Offset(100, 500);
+    Offset corner = Offset(0, 0);
 
     Offset yAxis = Offset(0, -400);
     Offset xAxis = Offset(1000, 0);
@@ -215,6 +224,8 @@ class Painter extends CustomPainter {
 
     Offset firstBarOffset = Offset(10, 0);
     Offset barWidth = (xAxis - (firstBarOffset * 2.0)) / bars.length.toDouble();
+
+    print(barWidth);
 
     double borderWidth = 1;
     Offset borderOffset = Offset(borderWidth, -borderWidth);
@@ -262,6 +273,16 @@ class Painter extends CustomPainter {
 
       canvas.drawRect(innerRect, paint..color = Colors.red);
 
+      canvas.save();
+
+      Offset textStart;
+      if (barWidth.dx < 50) {
+        textStart = corner +
+            Offset(30, - (20 - barWidth.dx) -(firstBarOffset + (barWidth * (i + 1).toDouble())).dx);
+        canvas.rotate(90 * pi / 180);
+      } else {
+        textStart = start;
+      }
       TextPainter(
         text: TextSpan(
           text: cutoffs[i].toString(),
@@ -275,15 +296,32 @@ class Painter extends CustomPainter {
         ..layout(minWidth: 0, maxWidth: size.width)
         ..paint(
             canvas,
-            start +
+            textStart +
                 xTextYOffset +
                 xTextXOffsetPerLetter *
                     cutoffs[i].toString().length.toDouble());
+
+      canvas.restore();
     }
 
     // draw last cutoff tick
+
     Offset start = corner + Offset(10, 0) + (barWidth * bars.length.toDouble());
     canvas.drawLine(start, start + xTickSize, paint..color = Colors.black);
+
+    Offset textStart;
+
+    canvas.save();
+
+    if (barWidth.dx < 50) {
+      textStart = corner +
+          Offset(30,  - (20 - barWidth.dx) 
+              -(firstBarOffset + (barWidth * (bars.length + 1).toDouble())).dx);
+      canvas.rotate(90 * pi / 180);
+    } else {
+      textStart = corner + Offset(10, 0) + (barWidth * bars.length.toDouble());
+    }
+
     TextPainter(
       text: TextSpan(
         text: cutoffs.last.toString(),
@@ -297,10 +335,12 @@ class Painter extends CustomPainter {
       ..layout(minWidth: 0, maxWidth: size.width)
       ..paint(
           canvas,
-          start +
+          textStart +
               xTextYOffset +
               xTextXOffsetPerLetter *
                   cutoffs.last.toString().length.toDouble());
+
+    canvas.restore();
   }
 
   @override
@@ -315,10 +355,11 @@ class Histogram {
   final String outAndAnswer;
 
   String get out => outAndAnswer.split(" SEPERATOR ").first;
-  String get outWithoutExtra => out.split("\r\n").getRange(1, out.split("\r\n").length - 1).join("\r\n");
+  String get outWithoutExtra =>
+      out.split("\r\n").getRange(1, out.split("\r\n").length - 1).join("\r\n");
   String get answer => outAndAnswer.split(" SEPERATOR ").last;
 
-  static List<Histogram> getHistos(String data){
+  static List<Histogram> getHistos(String data) {
     final split = data.split(" BIGSEPERATING ");
     return List.generate(split.length - 1, (index) => Histogram(split[index]));
   }
