@@ -12,6 +12,9 @@ Future<String> getOut(testcase) async {
   return python.stdout.transform(utf8.decoder).first;
 }
 
+// TODO: fix line splitting problem accross different OSs
+// TODO: fix javac problem
+
 Future<String> getPath(String from, String to, String out) async {
   // Process.run('javac', ['solutions\\Navigation.java'], runInShell: true);
 
