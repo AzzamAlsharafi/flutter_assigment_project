@@ -17,12 +17,18 @@ Future<void> getOutAndAnswer(testcase, _HistogramWidgetState state) async {
     (event) {
       out = String.fromCharCodes(event);
 
-      java.stdin.write(out);
+      if (out != "EXIT") {
+        java.stdin.write(out);
+      }
     },
   );
 
   java.stdout.listen((event) {
     answer = String.fromCharCodes(event);
+
+    state.setState(() {
+      state.widget.histograms.add(Histogram(out, answer));
+    });
 
     python.stdin.write(answer);
 
@@ -30,10 +36,6 @@ Future<void> getOutAndAnswer(testcase, _HistogramWidgetState state) async {
     // outF.write(out);
     // outF.write(answer);
     // outF.close();
-
-    state.setState(() {
-      state.widget.histograms.add(Histogram(out, answer));
-    });
   });
 
   // print python error
