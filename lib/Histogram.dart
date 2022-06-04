@@ -8,7 +8,10 @@ import 'package:flutter/material.dart';
 Future<void> getOutAndAnswer(testcase, _HistogramWidgetState state) async {
   Process python = await Process.start('python', ['tasks/histogram/run.py']);
 
-  Process java = await Process.start('java', ['solutions/Histogram.java']);
+  Process.run('javac', ['solutions/Histogram.java'], runInShell: true);
+
+  Process java =
+      await Process.start('java', ['Histogram'], workingDirectory: 'solutions');
 
   String out = "";
   String answer = "";
@@ -23,12 +26,21 @@ Future<void> getOutAndAnswer(testcase, _HistogramWidgetState state) async {
     },
   );
 
+  var answerBuffer = <String>[];
   java.stdout.listen((event) {
     answer = String.fromCharCodes(event);
+    // answer may not come in one chunk, i.e. sometimes we get one line only and not 2
+    // so we have to wait until it is full.
+    answerBuffer
+        .addAll(answer.split('\n').where((element) => element.isNotEmpty));
 
-    state.setState(() {
-      state.widget.histograms.add(Histogram(out, answer));
-    });
+    if (answerBuffer.length >= 2) {
+      var thisAnswer = answerBuffer.sublist(0, 2);
+      answerBuffer = answerBuffer.sublist(2, answerBuffer.length);
+      state.setState(() {
+        state.widget.histograms.add(Histogram(out, thisAnswer));
+      });
+    }
 
     python.stdin.write(answer);
 
@@ -188,7 +200,7 @@ class Chart extends StatelessWidget {
 class Painter extends CustomPainter {
   const Painter(this.answer);
 
-  final String answer;
+  final List<String> answer;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -196,10 +208,8 @@ class Painter extends CustomPainter {
       return;
     }
 
-    final split = answer.split("\r\n");
-
-    final cutoffs = split[0].split(" ").map((e) => int.parse(e)).toList();
-    final bars = split[1].split(" ").map((e) => double.parse(e)).toList();
+    final cutoffs = answer[0].split(" ").map((e) => int.parse(e)).toList();
+    final bars = answer[1].split(" ").map((e) => double.parse(e)).toList();
 
     Offset corner = const Offset(100, 500);
 
@@ -351,5 +361,5 @@ class Histogram {
   Histogram(this.out, this.answer);
 
   final String out;
-  final String answer;
+  final List<String> answer;
 }
