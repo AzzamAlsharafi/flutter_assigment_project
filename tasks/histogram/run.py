@@ -1,6 +1,8 @@
 from typing import List
 import os
 
+from numpy import intp
+
 CASE_DIR = os.path.join(os.path.dirname(__file__), "cases")
 
 test_cases = next(os.walk(CASE_DIR))[2]

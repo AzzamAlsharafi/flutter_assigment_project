@@ -15,7 +15,7 @@ Future<String> getOut(testcase) async {
 Future<String> getPath(String from, String to, String out) async {
   // Process.run('javac', ['solutions\\Navigation.java'], runInShell: true);
 
-  Process java = await Process.start('java', ['solutions\\Navigation.java']);
+  Process java = await Process.start('java', ['solutions/Navigation.java']);
 
   List<String> split = out.split("\r\n");
   java.stdin.writeln(split.getRange(0, split.length - 3).join("\r\n"));
@@ -28,23 +28,24 @@ Future<String> getPath(String from, String to, String out) async {
 }
 
 class NavigationWidget extends StatefulWidget {
-  const NavigationWidget({Key? key}) : super(key: key);
+  NavigationWidget({Key? key}) : super(key: key);
+
+  final List<Graph> graphs = [];
 
   @override
   State<NavigationWidget> createState() => _NavigationWidgetState();
 }
 
 class _NavigationWidgetState extends State<NavigationWidget> {
-  List<Graph> graphs = <Graph>[];
   int selectedGraph = 0;
 
   @override
   Widget build(BuildContext context) {
-    if (graphs.length < 5) {
-      getOut(graphs.length).then(
+    if (widget.graphs.length < 5) {
+      getOut(widget.graphs.length).then(
         (value) => setState(
           () {
-            graphs.add(Graph(value));
+            widget.graphs.add(Graph(value));
           },
         ),
       );
@@ -57,7 +58,7 @@ class _NavigationWidgetState extends State<NavigationWidget> {
           constrained: false,
           boundaryMargin: const EdgeInsets.all(1000),
           child: Scene(
-            graphs.isEmpty ? Graph("") : graphs[selectedGraph], key: ValueKey(graphs.isEmpty? "" : graphs[selectedGraph].out),
+            widget.graphs.isEmpty ? Graph("") : widget.graphs[selectedGraph], key: ValueKey(widget.graphs.isEmpty? "" : widget.graphs[selectedGraph].out),
           ),
         ),
         SizedBox.expand(
@@ -65,7 +66,7 @@ class _NavigationWidgetState extends State<NavigationWidget> {
               crossAxisAlignment: CrossAxisAlignment.end,
               mainAxisAlignment: MainAxisAlignment.center,
               children: 
-              (graphs.isEmpty ? <Widget>[] : <Widget>[
+              (widget.graphs.isEmpty ? <Widget>[] : <Widget>[
                 Padding(
                   padding: const EdgeInsets.all(5.0),
                   child: FloatingActionButton.extended(onPressed: () {}, label: const Text("Test cases"), backgroundColor: Colors.blueGrey
@@ -73,7 +74,7 @@ class _NavigationWidgetState extends State<NavigationWidget> {
                 )
               ]) +
               List<Widget>.generate(
-                graphs.length,
+                widget.graphs.length,
                 (index) => Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 32.0),
                   child: FloatingActionButton(
@@ -87,7 +88,7 @@ class _NavigationWidgetState extends State<NavigationWidget> {
                     child: Text((index + 1).toString()),
                   ),
                 ),
-              ) + (graphs.isEmpty ? [] : [
+              ) + (widget.graphs.isEmpty ? [] : [
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 20.0),
                   child: FloatingActionButton.extended(onPressed: () {
@@ -95,7 +96,7 @@ class _NavigationWidgetState extends State<NavigationWidget> {
                       (BuildContext context){
                         return AlertDialog(
                           content: SingleChildScrollView(child: SelectableText(
-                            graphs.isEmpty ? "" : graphs[selectedGraph].getOutWithoutExtra(),
+                            widget.graphs.isEmpty ? "" : widget.graphs[selectedGraph].getOutWithoutExtra(),
                             style: const TextStyle(fontFamily: ''),
                           ),),
                         );

@@ -5,100 +5,170 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
-Future<String> getOutAndAnswer(testcase) async {
+Future<void> getOutAndAnswer(testcase, _HistogramWidgetState state) async {
   Process python = await Process.start('python', ['tasks/histogram/run.py']);
 
-  // python.stdin.writeln(testcase);
+  Process java = await Process.start('java', ['solutions/Histogram.java']);
 
-  final String out = await python.stdout.transform(utf8.decoder).first;
+  String result = "";
 
-  Process java = await Process.start('java', ['solutions\\Histogram.java']);
+  String out = "";
+  String answer = "";
 
-  java.stdin.writeln(out);
+  python.stdout.listen((event) {
+    out = String.fromCharCodes(event);
 
-  final String answer = await java.stdout.transform(utf8.decoder).first;
+    java.stdin.write(out);
 
-  return "$out SEPERATOR $answer";
+    result += out;
+  }, onDone: () {
+    state.setState(() {
+      state.widget.histograms.addAll(Histogram.getHistos(result));
+    });
+  },);
+
+  
+  java.stdout.listen((event) {
+    answer = String.fromCharCodes(event);
+
+    python.stdin.write(answer);
+    result += " SEPERATOR $answer BIGSEPERATING ";
+  });
+
+  // print python error
+  python.stderr.listen((event) {
+    print("python error");
+    print(String.fromCharCodes(event));
+  });
+
+  // print java error
+  java.stderr.listen((event) {
+    print("java error");
+    print(String.fromCharCodes(event));
+  });
+
+  // final String out = await python.stdout.transform(utf8.decoder).first;
+
+  // java.stdin.writeln(out);
+
+  // final String answer = await java.stdout.transform(utf8.decoder).first;
+
+  // python.stdin.writeln(answer);
+
+  // result += "$out SEPERATOR $answer";
+  // if(i < testcase - 2){
+  //   result += " MEGASEPERATING ";
+  // }
 }
 
 class HistogramWidget extends StatefulWidget {
-  const HistogramWidget({Key? key}) : super(key: key);
+  HistogramWidget({Key? key}) : super(key: key);
+
+  final List<Histogram> histograms = [];
 
   @override
   State<HistogramWidget> createState() => _HistogramWidgetState();
 }
 
 class _HistogramWidgetState extends State<HistogramWidget> {
-  List<Histogram> histograms = [];
   int selectedHistogram = 0;
 
   @override
   Widget build(BuildContext context) {
-    if (histograms.length < 10) {
-      getOutAndAnswer(histograms.length).then(
-        (value) => setState(() {
-          histograms.add(Histogram(value));
-        }),
-      );
+    if (widget.histograms.isEmpty) {
+      getOutAndAnswer(10, this);
     }
 
     return Stack(
-      children: [InteractiveViewer(
-        minScale: 0.5,
-        constrained: false,
-        boundaryMargin: const EdgeInsets.all(1000),
-        child: Chart(
-            histograms.isEmpty ? Histogram("") : histograms[selectedHistogram]),
-      ),
-      SizedBox.expand(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: 
-              (histograms.isEmpty ? <Widget>[] : <Widget>[
-                Padding(
-                  padding: const EdgeInsets.all(5.0),
-                  child: FloatingActionButton.extended(onPressed: () {}, label: const Text("Test cases"), backgroundColor: Colors.blueGrey
-                  ,),
-                )
-              ]) +
-              List<Widget>.generate(
-                histograms.length,
-                (index) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 40.0),
-                  child: FloatingActionButton(
-                    mini: true,
-                    backgroundColor:
-                        selectedHistogram == index ? Colors.green : Colors.blue,
-                    onPressed: () {
-                      setState(() {
-                        selectedHistogram = index;
-                      });
-                    },
-                    child: Text((index + 1).toString()),
-                  ),
-                ),
-              ) + (histograms.isEmpty ? [] : [
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 20.0),
-                  child: FloatingActionButton.extended(onPressed: () {
-                    showDialog(context: context, builder: 
-                      (BuildContext context){
-                        return AlertDialog(
-                          content: SingleChildScrollView(child: SelectableText(
-                            histograms.isEmpty ? "" : histograms[selectedHistogram].out,
-                            style: const TextStyle(fontFamily: ''),
-                          ),),
-                        );
-                      }
-                    );
-                  }, label: const Text("Input"), backgroundColor: Colors.blueGrey
-                  ,),
-                )
-              ]),
-            ),
-        ),],
-      
+      children: [
+        InteractiveViewer(
+          minScale: 0.5,
+          constrained: false,
+          boundaryMargin: const EdgeInsets.all(1000),
+          child: Chart(widget.histograms.isEmpty
+              ? Histogram("")
+              : widget.histograms[selectedHistogram], key: ValueKey(widget.histograms.isEmpty ? "" : widget.histograms[selectedHistogram].outAndAnswer),),
+        ),
+        SizedBox.expand(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: (widget.histograms.isEmpty
+                    ? <Widget>[]
+                    : <Widget>[
+                        Padding(
+                          padding: const EdgeInsets.all(5.0),
+                          child: FloatingActionButton.extended(
+                            onPressed: () {},
+                            label: const Text("Test cases"),
+                            backgroundColor: Colors.blueGrey,
+                          ),
+                        )
+                      ]) +
+                [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: List.generate(
+                        2,
+                        (outerIndex) => Column(
+                              children: List<Widget>.generate(
+                                widget.histograms.length ~/ 2,
+                                (index) => Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 8.0, horizontal: 10.0),
+                                  child: FloatingActionButton(
+                                    mini: true,
+                                    backgroundColor: selectedHistogram ==
+                                            index + (index + outerIndex)
+                                        ? Colors.green
+                                        : Colors.blue,
+                                    onPressed: () {
+                                      setState(() {
+                                        selectedHistogram =
+                                            index + (index + outerIndex);
+                                      });
+                                    },
+                                    child: Text(
+                                        (index + (index + outerIndex) + 1)
+                                            .toString()),
+                                  ),
+                                ),
+                              ),
+                            )),
+                  )
+                ] +
+                (widget.histograms.isEmpty
+                    ? []
+                    : [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 8.0, horizontal: 20.0),
+                          child: FloatingActionButton.extended(
+                            onPressed: () {
+                              showDialog(
+                                context: context,
+                                builder: (BuildContext context) {
+                                  return AlertDialog(
+                                    content: SingleChildScrollView(
+                                      child: SelectableText(
+                                        widget.histograms.isEmpty
+                                            ? ""
+                                            : widget.histograms[selectedHistogram].outWithoutExtra,
+                                        style: const TextStyle(fontFamily: ''),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              );
+                            },
+                            label: const Text("Input"),
+                            backgroundColor: Colors.blueGrey,
+                          ),
+                        )
+                      ]),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -133,10 +203,10 @@ class Painter extends CustomPainter {
     final cutoffs = split[0].split(" ").map((e) => int.parse(e)).toList();
     final bars = split[1].split(" ").map((e) => double.parse(e)).toList();
 
-    Offset corner = Offset(500, 500);
+    Offset corner = Offset(100, 500);
 
     Offset yAxis = Offset(0, -400);
-    Offset xAxis = Offset(500, 0);
+    Offset xAxis = Offset(1000, 0);
 
     Offset yTickSize = Offset(-10, 0);
     Offset yTickDistance = Offset(0, -40);
@@ -203,24 +273,34 @@ class Painter extends CustomPainter {
         textDirection: TextDirection.ltr,
       )
         ..layout(minWidth: 0, maxWidth: size.width)
-        ..paint(canvas, start + xTextYOffset + xTextXOffsetPerLetter * cutoffs[i].toString().length.toDouble());
+        ..paint(
+            canvas,
+            start +
+                xTextYOffset +
+                xTextXOffsetPerLetter *
+                    cutoffs[i].toString().length.toDouble());
     }
 
     // draw last cutoff tick
     Offset start = corner + Offset(10, 0) + (barWidth * bars.length.toDouble());
     canvas.drawLine(start, start + xTickSize, paint..color = Colors.black);
     TextPainter(
-        text: TextSpan(
-          text: cutoffs.last.toString(),
-          style: const TextStyle(
-            color: Colors.black,
-            fontSize: 12,
-          ),
+      text: TextSpan(
+        text: cutoffs.last.toString(),
+        style: const TextStyle(
+          color: Colors.black,
+          fontSize: 12,
         ),
-        textDirection: TextDirection.ltr,
-      )
-        ..layout(minWidth: 0, maxWidth: size.width)
-        ..paint(canvas, start + xTextYOffset + xTextXOffsetPerLetter * cutoffs.last.toString().length.toDouble());
+      ),
+      textDirection: TextDirection.ltr,
+    )
+      ..layout(minWidth: 0, maxWidth: size.width)
+      ..paint(
+          canvas,
+          start +
+              xTextYOffset +
+              xTextXOffsetPerLetter *
+                  cutoffs.last.toString().length.toDouble());
   }
 
   @override
@@ -235,5 +315,11 @@ class Histogram {
   final String outAndAnswer;
 
   String get out => outAndAnswer.split(" SEPERATOR ").first;
+  String get outWithoutExtra => out.split("\r\n").getRange(1, out.split("\r\n").length - 1).join("\r\n");
   String get answer => outAndAnswer.split(" SEPERATOR ").last;
+
+  static List<Histogram> getHistos(String data){
+    final split = data.split(" BIGSEPERATING ");
+    return List.generate(split.length - 1, (index) => Histogram(split[index]));
+  }
 }

@@ -17,15 +17,16 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: const MyHomePage(),
+      home: MyHomePage(),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
-  const MyHomePage({Key? key}) : super(key: key);
+  MyHomePage({Key? key}) : super(key: key);
 
-  final pages = const [NavigationWidget(), NavigationWidget(), HistogramWidget()];
+  final NavigationWidget navigation = NavigationWidget();
+  final HistogramWidget histogram = HistogramWidget();
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
@@ -36,12 +37,18 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    List<Widget> pages = [
+      Container(),
+      widget.navigation,
+      widget.histogram,
+    ];
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(8.0),
-          child: widget.pages[selectedPage],
+          child: pages[selectedPage],
         ),
       ),
       bottomNavigationBar: BottomNavigationBar(
