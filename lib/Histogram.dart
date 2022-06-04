@@ -10,8 +10,6 @@ Future<void> getOutAndAnswer(testcase, _HistogramWidgetState state) async {
 
   Process java = await Process.start('java', ['solutions/Histogram.java']);
 
-  String result = "";
-
   String out = "";
   String answer = "";
 
@@ -20,13 +18,6 @@ Future<void> getOutAndAnswer(testcase, _HistogramWidgetState state) async {
       out = String.fromCharCodes(event);
 
       java.stdin.write(out);
-
-      result += out;
-    },
-    onDone: () {
-      state.setState(() {
-        state.widget.histograms.addAll(Histogram.getHistos(result));
-      });
     },
   );
 
@@ -34,7 +25,15 @@ Future<void> getOutAndAnswer(testcase, _HistogramWidgetState state) async {
     answer = String.fromCharCodes(event);
 
     python.stdin.write(answer);
-    result += " SEPERATOR $answer BIGSEPERATING ";
+
+    // var outF = new File('output.txt').openWrite(mode: FileMode.append);
+    // outF.write(out);
+    // outF.write(answer);
+    // outF.close();
+
+    state.setState(() {
+      state.widget.histograms.add(Histogram(out, answer));
+    });
   });
 
   // print python error
@@ -48,19 +47,6 @@ Future<void> getOutAndAnswer(testcase, _HistogramWidgetState state) async {
     print("java error");
     print(String.fromCharCodes(event));
   });
-
-  // final String out = await python.stdout.transform(utf8.decoder).first;
-
-  // java.stdin.writeln(out);
-
-  // final String answer = await java.stdout.transform(utf8.decoder).first;
-
-  // python.stdin.writeln(answer);
-
-  // result += "$out SEPERATOR $answer";
-  // if(i < testcase - 2){
-  //   result += " MEGASEPERATING ";
-  // }
 }
 
 class HistogramWidget extends StatefulWidget {
@@ -84,17 +70,18 @@ class _HistogramWidgetState extends State<HistogramWidget> {
     return Stack(
       children: [
         widget.histograms.isEmpty
-                ? const Center(child: CircularProgressIndicator()) : InteractiveViewer(
-          minScale: 0.5,
-          constrained: false,
-          boundaryMargin: const EdgeInsets.all(1000),
-          child: Chart(
-            widget.histograms[selectedHistogram],
-            key: ValueKey(widget.histograms.isEmpty
-                ? ""
-                : widget.histograms[selectedHistogram].outAndAnswer),
-          ),
-        ),
+            ? const Center(child: CircularProgressIndicator())
+            : InteractiveViewer(
+                minScale: 0.5,
+                constrained: false,
+                boundaryMargin: const EdgeInsets.all(1000),
+                child: Chart(
+                  widget.histograms[selectedHistogram],
+                  key: ValueKey(widget.histograms.isEmpty
+                      ? ""
+                      : widget.histograms[selectedHistogram].out),
+                ),
+              ),
         SizedBox.expand(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -161,7 +148,7 @@ class _HistogramWidgetState extends State<HistogramWidget> {
                                             ? ""
                                             : widget
                                                 .histograms[selectedHistogram]
-                                                .outWithoutExtra,
+                                                .out,
                                         style: const TextStyle(fontFamily: ''),
                                       ),
                                     ),
@@ -208,31 +195,32 @@ class Painter extends CustomPainter {
     }
 
     final split = answer.split("\r\n");
+
     final cutoffs = split[0].split(" ").map((e) => int.parse(e)).toList();
     final bars = split[1].split(" ").map((e) => double.parse(e)).toList();
 
-    Offset corner = Offset(100, 500);
+    Offset corner = const Offset(100, 500);
 
-    Offset yAxis = Offset(0, -400);
-    Offset xAxis = Offset(1000, 0);
+    Offset yAxis = const Offset(0, -400);
+    Offset xAxis = const Offset(1000, 0);
 
-    Offset yTickSize = Offset(-10, 0);
-    Offset yTickDistance = Offset(0, -40);
-    Offset yTextOffset = Offset(-40, -10);
+    Offset yTickSize = const Offset(-10, 0);
+    Offset yTickDistance = const Offset(0, -40);
+    Offset yTextOffset = const Offset(-40, -10);
 
     double greatest = max(bars.reduce(max), 1000);
     greatest = ((greatest ~/ 1000) + (greatest % 1000 > 0 ? 1 : 0)) * 1000.0;
 
     List<double> yTicks = List.generate(11, (index) => index * (greatest / 10));
 
-    Offset firstBarOffset = Offset(10, 0);
+    Offset firstBarOffset = const Offset(10, 0);
     Offset barWidth = (xAxis - (firstBarOffset * 2.0)) / bars.length.toDouble();
 
     double borderWidth = 1;
     Offset borderOffset = Offset(borderWidth, -borderWidth);
-    Offset xTickSize = Offset(0, 10);
-    Offset xTextYOffset = Offset(0, 10);
-    Offset xTextXOffsetPerLetter = Offset(-3, 0);
+    Offset xTickSize = const Offset(0, 10);
+    Offset xTextYOffset = const Offset(0, 10);
+    Offset xTextXOffsetPerLetter = const Offset(-3, 0);
 
     Paint paint = Paint();
 
@@ -279,7 +267,10 @@ class Painter extends CustomPainter {
       Offset textStart;
       if (barWidth.dx < 50) {
         textStart = Offset(corner.dy, -corner.dx) +
-            Offset(30, - (20 - barWidth.dx) -(firstBarOffset + (barWidth * (i + 1).toDouble())).dx);
+            Offset(
+                30,
+                -(20 - barWidth.dx) -
+                    (firstBarOffset + (barWidth * (i + 1).toDouble())).dx);
         canvas.rotate(90 * pi / 180);
       } else {
         textStart = start;
@@ -316,11 +307,15 @@ class Painter extends CustomPainter {
 
     if (barWidth.dx < 50) {
       textStart = Offset(corner.dy, -corner.dx) +
-          Offset(30,  - (20 - barWidth.dx) 
-              -(firstBarOffset + (barWidth * (bars.length + 1).toDouble())).dx);
+          Offset(
+              30,
+              -(20 - barWidth.dx) -
+                  (firstBarOffset + (barWidth * (bars.length + 1).toDouble()))
+                      .dx);
       canvas.rotate(90 * pi / 180);
     } else {
-      textStart = corner + Offset(10, 0) + (barWidth * bars.length.toDouble());
+      textStart =
+          corner + const Offset(10, 0) + (barWidth * bars.length.toDouble());
     }
 
     TextPainter(
@@ -351,17 +346,8 @@ class Painter extends CustomPainter {
 }
 
 class Histogram {
-  Histogram(this.outAndAnswer);
+  Histogram(this.out, this.answer);
 
-  final String outAndAnswer;
-
-  String get out => outAndAnswer.split(" SEPERATOR ").first;
-  String get outWithoutExtra =>
-      out.split("\r\n").getRange(1, out.split("\r\n").length - 1).join("\r\n");
-  String get answer => outAndAnswer.split(" SEPERATOR ").last;
-
-  static List<Histogram> getHistos(String data) {
-    final split = data.split(" BIGSEPERATING ");
-    return List.generate(split.length - 1, (index) => Histogram(split[index]));
-  }
+  final String out;
+  final String answer;
 }
