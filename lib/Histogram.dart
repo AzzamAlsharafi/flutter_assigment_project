@@ -83,14 +83,13 @@ class _HistogramWidgetState extends State<HistogramWidget> {
 
     return Stack(
       children: [
-        InteractiveViewer(
+        widget.histograms.isEmpty
+                ? const Center(child: CircularProgressIndicator()) : InteractiveViewer(
           minScale: 0.5,
           constrained: false,
           boundaryMargin: const EdgeInsets.all(1000),
           child: Chart(
-            widget.histograms.isEmpty
-                ? Histogram("")
-                : widget.histograms[selectedHistogram],
+            widget.histograms[selectedHistogram],
             key: ValueKey(widget.histograms.isEmpty
                 ? ""
                 : widget.histograms[selectedHistogram].outAndAnswer),

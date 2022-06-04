@@ -53,12 +53,12 @@ class _NavigationWidgetState extends State<NavigationWidget> {
 
     return Stack(
       children: [
-        InteractiveViewer(
+        widget.graphs.isEmpty ? const Center(child: CircularProgressIndicator()) : InteractiveViewer(
           minScale: 0.5,
           constrained: false,
           boundaryMargin: const EdgeInsets.all(1000),
           child: Scene(
-            widget.graphs.isEmpty ? Graph("") : widget.graphs[selectedGraph], key: ValueKey(widget.graphs.isEmpty? "" : widget.graphs[selectedGraph].out),
+            widget.graphs[selectedGraph], key: ValueKey(widget.graphs.isEmpty? "" : widget.graphs[selectedGraph].out),
           ),
         ),
         SizedBox.expand(
