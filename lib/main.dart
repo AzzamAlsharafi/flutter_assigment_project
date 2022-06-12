@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_assigment_project/Histogram.dart';
 import 'package:flutter_assigment_project/Navigation.dart';
+import 'package:flutter_assigment_project/Payment.dart';
 
 void main() async {
   runApp(const MyApp());
@@ -27,18 +28,19 @@ class MyHomePage extends StatefulWidget {
 
   final NavigationWidget navigation = NavigationWidget();
   final HistogramWidget histogram = HistogramWidget();
+  final PaymentWidget payment = PaymentWidget();
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int selectedPage = 2;
+  int selectedPage = 0;
 
   @override
   Widget build(BuildContext context) {
     List<Widget> pages = [
-      Container(),
+      widget.payment,
       widget.navigation,
       widget.histogram,
     ];
