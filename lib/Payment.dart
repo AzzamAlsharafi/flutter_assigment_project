@@ -57,7 +57,10 @@ class _PaymentWidgetState extends State<PaymentWidget> {
     if (readyBuffer.isNotEmpty) {
       ready.clear();
       setState(() {
-        ready.addAll(readyBuffer);
+        for (var id in readyBuffer) {
+          ready.add(id);
+          queue.remove(id);
+        }
       });
       readyBuffer.clear();
     }
@@ -143,46 +146,48 @@ class _PaymentWidgetState extends State<PaymentWidget> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: [
-            ClockWidget(currentTime, error, () {
-              if (timeIncrease == 0) {
-                timeIncrease = timeIncreaseMemory;
-              } else {
-                timeIncrease = 0;
-              }
-            }, (value) {
-              timeDelay = pow(10, value).toInt();
-            }),
-            const SizedBox(
-              height: 20,
-            ),
-            SizedBox(
-              height: 350,
-              width: 600,
-              child: Card(
-                elevation: 2.0,
-                child: SingleChildScrollView(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Column(
-                        children: List.generate(
-                            queue.length,
-                            (index) => QueueItemWidget(
-                                queue[queue.keys.elementAt(index)]!)).toList(),
-                      ),
-                    ],
+        SingleChildScrollView(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              ClockWidget(currentTime, error, () {
+                if (timeIncrease == 0) {
+                  timeIncrease = timeIncreaseMemory;
+                } else {
+                  timeIncrease = 0;
+                }
+              }, (value) {
+                timeDelay = pow(10, value).toInt();
+              }),
+              const SizedBox(
+                height: 20,
+              ),
+              SizedBox(
+                height: 350,
+                width: 600,
+                child: Card(
+                  elevation: 2.0,
+                  child: SingleChildScrollView(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Column(
+                          children: List.generate(
+                              queue.length,
+                              (index) => QueueItemWidget(
+                                  queue[queue.keys.elementAt(index)]!)).toList(),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-            const SizedBox(
-              height: 20,
-            ),
-            ReadyIdsWidget(ready)
-          ],
+              const SizedBox(
+                height: 20,
+              ),
+              ReadyIdsWidget(ready)
+            ],
+          ),
         ),
       ],
     );
