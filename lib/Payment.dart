@@ -24,18 +24,23 @@ class _PaymentWidgetState extends State<PaymentWidget> {
     Process java =
         await Process.start('java', ['Payment'], workingDirectory: 'solutions');
 
+    String pythonOut = "";
+    String javaOut = "";
+
     python.stdout.listen((event) async {
-      final pythonOut = String.fromCharCodes(event);
+      pythonOut += String.fromCharCodes(event);
       await processPythonOut(pythonOut);
       java.stdin.write(pythonOut);
+      pythonOut = "";
     }, onDone: () {
       print("DONE @ ${DateTime.now().difference(startTime).inMilliseconds}ms");
     });
 
     java.stdout.listen((event) async {
-      final javaOut = String.fromCharCodes(event);
+      javaOut += String.fromCharCodes(event);
       processJavaOut(javaOut);
       python.stdin.write(javaOut);
+      javaOut = "";
     });
 
     // print error streams
