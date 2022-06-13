@@ -65,7 +65,7 @@ class _PaymentWidgetState extends State<PaymentWidget> {
         final id = split[1];
 
         if (currentTime == -1) {
-          currentTime = time;
+          currentTime = time - 1;
         }
 
         while (currentTime < time) {
@@ -118,7 +118,7 @@ class _PaymentWidgetState extends State<PaymentWidget> {
   int currentTime = -1;
   int timeDelay = pow(10, 3).toInt(); // delay in microseconds before each timer update
   int timeIncrease =
-      1; // amount of time to add to the timer each time it updates, in milliseconds
+      0; // amount of time to add to the timer each time it updates, in milliseconds
   int timeIncreaseMemory =
       1; // to store time increase when pausing timer and timeIncrease = 0
 
@@ -155,15 +155,20 @@ class _PaymentWidgetState extends State<PaymentWidget> {
             ),
             SizedBox(
               height: 350,
+              width: 600,
               child: Card(
                 elevation: 2.0,
                 child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: List.generate(
-                        queue.length,
-                        (index) => QueueItemWidget(
-                            queue[queue.keys.elementAt(index)]!)).toList(),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Column(
+                        children: List.generate(
+                            queue.length,
+                            (index) => QueueItemWidget(
+                                queue[queue.keys.elementAt(index)]!)).toList(),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -359,7 +364,7 @@ class ClockWidget extends StatefulWidget {
 }
 
 class _ClockWidgetState extends State<ClockWidget> {
-  bool paused = false;
+  bool paused = true;
   double sliderValue = 3;
 
   @override
