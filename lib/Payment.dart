@@ -5,9 +5,6 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
-String outFile = 'out.txt';
-String outDone = "outDone";
-
 class PaymentWidget extends StatefulWidget {
   const PaymentWidget({Key? key}) : super(key: key);
 
@@ -16,7 +13,10 @@ class PaymentWidget extends StatefulWidget {
 }
 
 class _PaymentWidgetState extends State<PaymentWidget> {
-  Future<void> getOutStream() async {
+  Future<void> startRunning() async {
+    print("STARTING");
+    final startTime = DateTime.now();
+
     Process python = await Process.start('python', ['tasks/payment/run.py']);
 
     Process.run('javac', ['solutions/Payment.java'], runInShell: true);
@@ -24,39 +24,18 @@ class _PaymentWidgetState extends State<PaymentWidget> {
     Process java =
         await Process.start('java', ['Payment'], workingDirectory: 'solutions');
 
-    String pythonOut = "";
-    String javaOut = "";
-
-    File f = File(outFile);
-
-    if (await f.exists()) {
-      if (await File(outDone).exists()) {
-        setState(() {
-          outReady = true;
-        });
-        return;
-      } else {
-        await f.delete();
-      }
-    }
-
     python.stdout.listen((event) async {
-      pythonOut += String.fromCharCodes(event);
-      await f.writeAsString(pythonOut, mode: FileMode.append);
+      final pythonOut = String.fromCharCodes(event);
+      await processPythonOut(pythonOut);
       java.stdin.write(pythonOut);
-      pythonOut = "";
     }, onDone: () {
-      File(outDone).writeAsStringSync("DONE");
-      setState(() {
-        outReady = true;
-      });
+      print("DONE @ ${DateTime.now().difference(startTime).inMilliseconds}ms");
     });
 
     java.stdout.listen((event) async {
-      javaOut += String.fromCharCodes(event);
-      await f.writeAsString(javaOut, mode: FileMode.append);
+      final javaOut = String.fromCharCodes(event);
+      processJavaOut(javaOut);
       python.stdin.write(javaOut);
-      javaOut = "";
     });
 
     // print error streams
@@ -69,30 +48,25 @@ class _PaymentWidgetState extends State<PaymentWidget> {
     });
   }
 
-  File file = File(outFile);
+  Future<void> processPythonOut(String pythonOut) async {
+    if (readyBuffer.isNotEmpty) {
+      ready.clear();
+      setState(() {
+        ready.addAll(readyBuffer);
+      });
+      readyBuffer.clear();
+    }
 
-  bool outReady = false;
-  bool startedLoading = false;
-
-  int currentTime = -1;
-  int timeDelay = 100; // delay in microseconds before each timer update
-  int timeIncrease =
-      1; // amount of time to add to the timer each time it updates, in milliseconds
-
-  Map<String, List<String>> queue = {};
-  List<String> ready = [];
-
-  void startLoading() async {
-    List<String> lines = file.readAsLinesSync();
-
-    currentTime = int.parse(lines[0].split(" ")[0]);
-
-    for (String line in lines) {
+    for (var line in const LineSplitter().convert(pythonOut)) {
       final split = line.split(" ");
 
       if (split.length == 3) {
         final time = int.parse(split[0]);
         final id = split[1];
+
+        if (currentTime == -1) {
+          currentTime = time;
+        }
 
         while (currentTime < time) {
           await Future.delayed(Duration(microseconds: timeDelay));
@@ -113,103 +87,95 @@ class _PaymentWidgetState extends State<PaymentWidget> {
         if (line.contains("EXIT")) {
           return;
         } else if (line.contains("REBOOT")) {
-          print("REBOOT");
           if (mounted) {
             setState(() {
+              error = true;
               queue.clear();
+              ready.clear();
+            });
+            await Future.delayed(Duration(milliseconds: 500));
+            setState(() {
+              error = false;
             });
           }
         }
       } else {
-        print(line);
-        print(split.length);
-        if (mounted) {
-          setState(() {
-            ready.clear();
-            for (var id in split) {
-              queue.remove(id);
-              ready.add(id);
-            }
-          });
-        }
+        print("THIS SHOULDN'T HAPPEN");
       }
     }
-
-    // file
-    //     .openRead()
-    //     .transform(utf8.decoder)
-    //     .transform(const LineSplitter())
-    //     .forEach((line) async {
-    //   await Future.delayed(Duration(milliseconds: 1000));
-    //   print("hello");
-
-    // final split = line.split(" ");
-
-    // if (split.length == 3) {
-    //   final time = int.parse(split[0]);
-    //   final id = split[1];
-    //   final type = split[2];
-
-    //   if (startTime == -1) {
-    //     startTime = time;
-    //   }
-
-    //   setState(() {
-    //     queue.add(line);
-    //   });
-    // }
-    // });
   }
+
+  void processJavaOut(String javaOut) {
+    for (var id in javaOut.split(" ")) {
+      if (id.length == 32) {
+        readyBuffer.add(id);
+      }
+    }
+  }
+
+  bool startedRunning = false;
+
+  int currentTime = -1;
+  int timeDelay = pow(10, 3).toInt(); // delay in microseconds before each timer update
+  int timeIncrease =
+      1; // amount of time to add to the timer each time it updates, in milliseconds
+  int timeIncreaseMemory =
+      1; // to store time increase when pausing timer and timeIncrease = 0
+
+  Map<String, List<String>> queue = {};
+  List<String> readyBuffer = [];
+  List<String> ready = [];
+
+  bool error = false;
 
   @override
   Widget build(BuildContext context) {
-    if (!outReady) {
-      getOutStream();
-    } else {
-      outReady = true;
-      if (!startedLoading) {
-        startedLoading = true;
-        startLoading();
-      }
+    if (!startedRunning) {
+      startedRunning = true;
+      startRunning();
     }
 
-    return outReady
-        ? Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              SingleChildScrollView(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Text(getTimeFromMillis(currentTime.toString())),
-                      ),
-                    ),
-                    SizedBox(
-                      height: 400,
-                      child: Card(
-                        elevation: 2.0,
-                        child: SingleChildScrollView(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: List.generate(
-                                    queue.length,
-                                    (index) => QueueItemWidget(
-                                        queue[queue.keys.elementAt(index)]!))
-                                .toList(),
-                          ),
-                        ),
-                      ),
-                    ),
-                    ReadyIdsWidget(ready)
-                  ],
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Column(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [
+            ClockWidget(currentTime, error, () {
+              if (timeIncrease == 0) {
+                timeIncrease = timeIncreaseMemory;
+              } else {
+                timeIncrease = 0;
+              }
+            }, (value) {
+              timeDelay = pow(10, value).toInt();
+            }),
+            const SizedBox(
+              height: 20,
+            ),
+            SizedBox(
+              height: 350,
+              child: Card(
+                elevation: 2.0,
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: List.generate(
+                        queue.length,
+                        (index) => QueueItemWidget(
+                            queue[queue.keys.elementAt(index)]!)).toList(),
+                  ),
                 ),
               ),
-            ],
-          )
-        : const Center(child: CircularProgressIndicator());
+            ),
+            const SizedBox(
+              height: 20,
+            ),
+            ReadyIdsWidget(ready)
+          ],
+        ),
+      ],
+    );
   }
 }
 
@@ -297,7 +263,7 @@ class QueueItemWidget extends StatelessWidget {
 String getTimeFromMillis(String milli) {
   final datetime = DateTime.fromMillisecondsSinceEpoch(int.parse(milli));
 
-  return "${datetime.hour}:${datetime.minute}:${datetime.second}:${datetime.millisecond}";
+  return "${datetime.hour.toString().padLeft(2, "0")}:${datetime.minute.toString().padLeft(2, "0")}:${datetime.second.toString().padLeft(2, "0")}:${datetime.millisecond.toString().padLeft(3, "0")}";
 }
 
 Color getColor(String rank) {
@@ -339,25 +305,118 @@ class ReadyIdsWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     // build a 10x10 grid of the ready ids.
 
-    return Card(
-      child: Column(
-        children: List.generate((ready.length / 10).ceil(), (index) => 
-          Row(
-            children: List.generate(min(10, ready.length - (index * 10)), (innerIndex) => 
-              Container(
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: Colors.grey,
-                    width: 1,
+    return SizedBox(
+      width: 800,
+      height: 260,
+      child: Card(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: List.generate(
+            (ready.length / 5).ceil(),
+            (index) => Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(
+                min(5, ready.length - (index * 5)),
+                (innerIndex) => Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: Colors.grey,
+                      width: 1,
+                    ),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  borderRadius: BorderRadius.circular(10),
+                  child: SizedBox(
+                    width: 150,
+                    height: 10,
+                    child: Center(
+                      child: Text(
+                        ready[index * 5 + innerIndex],
+                        style: const TextStyle(fontSize: 8),
+                      ),
+                    ),
+                  ),
                 ),
-                child: Text((index * 10 + innerIndex).toString()),
-              )
+              ),
             ),
-          )
+          ),
         ),
-      )
+      ),
+    );
+  }
+}
+
+class ClockWidget extends StatefulWidget {
+  const ClockWidget(this.time, this.error, this.onPress, this.onSlide, {Key? key})
+      : super(key: key);
+
+  final int time;
+  final bool error;
+  final void Function() onPress;
+  final void Function(double) onSlide;
+
+  @override
+  State<ClockWidget> createState() => _ClockWidgetState();
+}
+
+class _ClockWidgetState extends State<ClockWidget> {
+  bool paused = false;
+  double sliderValue = 3;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(8.0),
+      decoration: BoxDecoration(
+        border: Border.all(
+          color: Colors.blue,
+          width: 1,
+        ),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12.0),
+            child: SizedBox(
+              width: 30,
+              height: 30,
+              child: FloatingActionButton(
+                onPressed: () {
+                  widget.onPress();
+
+                  setState(() {
+                    paused = !paused;
+                  });
+                },
+                child: paused
+                    ? const Icon(Icons.play_arrow)
+                    : const Icon(Icons.pause),
+              ),
+            ),
+          ),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(getTimeFromMillis(widget.time.toString())),
+            ),
+          ),
+          Slider(
+              value: sliderValue,
+              onChanged: (value) {
+                widget.onSlide(value);
+
+                setState(() {
+                  sliderValue = value;
+                });
+              },
+              min: 0,
+              max: 6),
+             Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: Icon(Icons.error, color: widget.error ? Colors.red : Colors.white),
+              )
+        ],
+      ),
     );
   }
 }
