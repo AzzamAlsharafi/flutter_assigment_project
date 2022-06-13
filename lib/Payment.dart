@@ -6,6 +6,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 
 String outFile = 'out.txt';
+String outDone = "outDone";
 
 class PaymentWidget extends StatefulWidget {
   const PaymentWidget({Key? key}) : super(key: key);
@@ -29,7 +30,14 @@ class _PaymentWidgetState extends State<PaymentWidget> {
     File f = File(outFile);
 
     if (await f.exists()) {
-      await f.delete();
+      if (await File(outDone).exists()) {
+        setState(() {
+          outReady = true;
+        });
+        return;
+      } else {
+        await f.delete();
+      }
     }
 
     python.stdout.listen((event) async {
@@ -38,6 +46,7 @@ class _PaymentWidgetState extends State<PaymentWidget> {
       java.stdin.write(pythonOut);
       pythonOut = "";
     }, onDone: () {
+      File(outDone).writeAsStringSync("DONE");
       setState(() {
         outReady = true;
       });
@@ -66,13 +75,14 @@ class _PaymentWidgetState extends State<PaymentWidget> {
   bool startedLoading = false;
 
   int currentTime = -1;
+  int timeDelay = 100; // delay in microseconds before each timer update
+  int timeIncrease =
+      1; // amount of time to add to the timer each time it updates, in milliseconds
 
   Map<String, List<String>> queue = {};
   List<String> ready = [];
 
   void startLoading() async {
-    // int previousTime = -1;
-
     List<String> lines = file.readAsLinesSync();
 
     currentTime = int.parse(lines[0].split(" ")[0]);
@@ -85,11 +95,11 @@ class _PaymentWidgetState extends State<PaymentWidget> {
         final id = split[1];
 
         while (currentTime < time) {
-          await Future.delayed(const Duration(milliseconds: 1));
+          await Future.delayed(Duration(microseconds: timeDelay));
 
           if (mounted) {
             setState(() {
-              currentTime += 1;
+              currentTime += timeIncrease;
             });
           }
         }
@@ -111,7 +121,8 @@ class _PaymentWidgetState extends State<PaymentWidget> {
           }
         }
       } else {
-        print("GO 100");
+        print(line);
+        print(split.length);
         if (mounted) {
           setState(() {
             ready.clear();
@@ -152,46 +163,49 @@ class _PaymentWidgetState extends State<PaymentWidget> {
 
   @override
   Widget build(BuildContext context) {
-    // if (!outReady) {
-    //    getOutStream();
-    // } else {
-    outReady = true;
-    if (!startedLoading) {
-      startedLoading = true;
-      startLoading();
+    if (!outReady) {
+      getOutStream();
+    } else {
+      outReady = true;
+      if (!startedLoading) {
+        startedLoading = true;
+        startLoading();
+      }
     }
-    // }
 
     return outReady
         ? Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Column(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Text(getTimeFromMillis(currentTime.toString())),
+              SingleChildScrollView(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Text(getTimeFromMillis(currentTime.toString())),
+                      ),
                     ),
-                  ),
-                  SizedBox(
-                    height: 400,
-                    child: Card(
-                      elevation: 2.0,
-                      child: SingleChildScrollView(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: List.generate(
-                                  queue.length,
-                                  (index) => QueueItemWidget(
-                                      queue[queue.keys.elementAt(index)]!))
-                              .toList(),
+                    SizedBox(
+                      height: 400,
+                      child: Card(
+                        elevation: 2.0,
+                        child: SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: List.generate(
+                                    queue.length,
+                                    (index) => QueueItemWidget(
+                                        queue[queue.keys.elementAt(index)]!))
+                                .toList(),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                    ReadyIdsWidget(ready)
+                  ],
+                ),
               ),
             ],
           )
@@ -313,5 +327,37 @@ Color getTextColor(String rank) {
       return Colors.white;
     default:
       return Colors.black;
+  }
+}
+
+class ReadyIdsWidget extends StatelessWidget {
+  const ReadyIdsWidget(this.ready, {Key? key}) : super(key: key);
+
+  final List<String> ready;
+
+  @override
+  Widget build(BuildContext context) {
+    // build a 10x10 grid of the ready ids.
+
+    return Card(
+      child: Column(
+        children: List.generate((ready.length / 10).ceil(), (index) => 
+          Row(
+            children: List.generate(min(10, ready.length - (index * 10)), (innerIndex) => 
+              Container(
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: Colors.grey,
+                    width: 1,
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text((index * 10 + innerIndex).toString()),
+              )
+            ),
+          )
+        ),
+      )
+    );
   }
 }
