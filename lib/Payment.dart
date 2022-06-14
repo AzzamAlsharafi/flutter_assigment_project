@@ -93,6 +93,11 @@ class _PaymentWidgetState extends State<PaymentWidget> {
         }
       } else if (split.length == 1) {
         if (line.contains("EXIT")) {
+          if (mounted) {
+            setState(() {
+              done = true;
+            });
+          }
           return;
         } else if (line.contains("REBOOT")) {
           if (mounted) {
@@ -101,7 +106,7 @@ class _PaymentWidgetState extends State<PaymentWidget> {
               queue.clear();
               ready.clear();
             });
-            await Future.delayed(const Duration(milliseconds: 500));
+            await Future.delayed(const Duration(milliseconds: 300));
             setState(() {
               error = false;
             });
@@ -124,8 +129,9 @@ class _PaymentWidgetState extends State<PaymentWidget> {
   bool startedRunning = false;
 
   int currentTime = -1;
-  int timeDelay =
-      pow(10, 3).toInt(); // delay in microseconds before each timer update
+
+  // delay ranges: 0 .. 1000 .. 1000000
+  int timeDelay =  1000; // delay in microseconds before each timer update
   int timeIncrease =
       0; // amount of time to add to the timer each time it updates, in milliseconds
   int timeIncreaseMemory =
@@ -136,6 +142,7 @@ class _PaymentWidgetState extends State<PaymentWidget> {
   List<String> ready = [];
 
   bool error = false;
+  bool done = false;
 
   @override
   Widget build(BuildContext context) {
@@ -151,22 +158,21 @@ class _PaymentWidgetState extends State<PaymentWidget> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.start,
             children: [
-              ClockWidget(currentTime, error, () {
+              ClockWidget(currentTime, error, done, () {
                 if (timeIncrease == 0) {
                   timeIncrease = timeIncreaseMemory;
                 } else {
                   timeIncrease = 0;
                 }
               }, (value) {
-                timeDelay = pow(10, value).toInt() - 1;
-                print(timeDelay);
+                timeDelay = pow(10, value).toInt();
               }),
               const SizedBox(
                 height: 20,
               ),
               SizedBox(
                 height: 350,
-                width: 600,
+                width: 560,
                 child: Card(
                     elevation: 2.0,
                     child: ListView.builder(
@@ -369,12 +375,13 @@ class ReadyIdsWidget extends StatelessWidget {
 }
 
 class ClockWidget extends StatefulWidget {
-  const ClockWidget(this.time, this.error, this.onPress, this.onSlide,
+  const ClockWidget(this.time, this.error, this.done, this.onPress, this.onSlide,
       {Key? key})
       : super(key: key);
 
   final int time;
   final bool error;
+  final bool done;
   final void Function() onPress;
   final void Function(double) onSlide;
 
@@ -392,8 +399,8 @@ class _ClockWidgetState extends State<ClockWidget> {
       padding: const EdgeInsets.all(8.0),
       decoration: BoxDecoration(
         border: Border.all(
-          color: Colors.blue,
-          width: 1,
+          color: widget.done ? Colors.green : Colors.blue,
+          width: widget.done ? 3 : 1,
         ),
         borderRadius: BorderRadius.circular(10),
       ),
