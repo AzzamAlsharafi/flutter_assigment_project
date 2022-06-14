@@ -101,7 +101,7 @@ class _PaymentWidgetState extends State<PaymentWidget> {
               queue.clear();
               ready.clear();
             });
-            await Future.delayed(Duration(milliseconds: 500));
+            await Future.delayed(const Duration(milliseconds: 500));
             setState(() {
               error = false;
             });
@@ -124,7 +124,8 @@ class _PaymentWidgetState extends State<PaymentWidget> {
   bool startedRunning = false;
 
   int currentTime = -1;
-  int timeDelay = pow(10, 3).toInt(); // delay in microseconds before each timer update
+  int timeDelay =
+      pow(10, 3).toInt(); // delay in microseconds before each timer update
   int timeIncrease =
       0; // amount of time to add to the timer each time it updates, in milliseconds
   int timeIncreaseMemory =
@@ -157,7 +158,8 @@ class _PaymentWidgetState extends State<PaymentWidget> {
                   timeIncrease = 0;
                 }
               }, (value) {
-                timeDelay = pow(10, value).toInt();
+                timeDelay = pow(10, value).toInt() - 1;
+                print(timeDelay);
               }),
               const SizedBox(
                 height: 20,
@@ -166,21 +168,27 @@ class _PaymentWidgetState extends State<PaymentWidget> {
                 height: 350,
                 width: 600,
                 child: Card(
-                  elevation: 2.0,
-                  child: SingleChildScrollView(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Column(
-                          children: List.generate(
-                              queue.length,
-                              (index) => QueueItemWidget(
-                                  queue[queue.keys.elementAt(index)]!)).toList(),
-                        ),
-                      ],
+                    elevation: 2.0,
+                    child: ListView.builder(
+                      itemCount: queue.length,
+                      itemBuilder: (context, index) {
+                        return QueueItemWidget(queue[queue.keys.elementAt(index)]!);
+                      },
+                    )
+                    // SingleChildScrollView(
+                    //   child: Row(
+                    //     mainAxisAlignment: MainAxisAlignment.center,
+                    //     children: [
+                    //       Column(
+                    //         children: List.generate(
+                    //             queue.length,
+                    //             (index) => QueueItemWidget(
+                    //                 queue[queue.keys.elementAt(index)]!)).toList(),
+                    //       ),
+                    //     ],
+                    //   ),
+                    // ),
                     ),
-                  ),
-                ),
               ),
               const SizedBox(
                 height: 20,
@@ -361,7 +369,8 @@ class ReadyIdsWidget extends StatelessWidget {
 }
 
 class ClockWidget extends StatefulWidget {
-  const ClockWidget(this.time, this.error, this.onPress, this.onSlide, {Key? key})
+  const ClockWidget(this.time, this.error, this.onPress, this.onSlide,
+      {Key? key})
       : super(key: key);
 
   final int time;
@@ -426,10 +435,11 @@ class _ClockWidgetState extends State<ClockWidget> {
               },
               min: 0,
               max: 6),
-             Padding(
-                padding: const EdgeInsets.only(right: 12),
-                child: Icon(Icons.error, color: widget.error ? Colors.red : Colors.white),
-              )
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: Icon(Icons.error,
+                color: widget.error ? Colors.red : Colors.white),
+          )
         ],
       ),
     );
