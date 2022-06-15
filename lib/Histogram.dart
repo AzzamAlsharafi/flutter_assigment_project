@@ -63,6 +63,61 @@ Future<void> getOutAndAnswer(testcase, _HistogramWidgetState state) async {
   });
 }
 
+Future<void> getGeneratedAnswer(generated, _HistogramWidgetState state) async {
+  Process.run('javac', ['solutions/Histogram.java'], runInShell: true);
+
+  Process java =
+      await Process.start('java', ['Histogram'], workingDirectory: 'solutions');
+
+  String out = "1\n$generated";
+  String answer = "";
+
+  java.stdin.write(out);
+
+  var answerBuffer = <String>[];
+  java.stdout.listen((event) {
+    answer = String.fromCharCodes(event);
+    // answer may not come in one chunk, i.e. sometimes we get one line only and not 2
+    // so we have to wait until it is full.
+    answerBuffer
+        .addAll(answer.split('\n').where((element) => element.isNotEmpty));
+
+    if (answerBuffer.length >= 2) {
+      var thisAnswer = answerBuffer.sublist(0, 2);
+      answerBuffer = answerBuffer.sublist(2, answerBuffer.length);
+
+      print(thisAnswer);
+
+      state.setState(() {
+        state.generatedHistogram = Histogram(out, thisAnswer);
+        state.generatMode = true;
+      });
+    }
+  });
+
+  // print java error
+  java.stderr.listen((event) {
+    print("java error");
+    print(String.fromCharCodes(event));
+  });
+}
+
+String generateInput() {
+  String result = "";
+
+  int numDataPoints = Random().nextInt(100000) + 1;
+  int numBins = Random().nextInt(100) + 1;
+
+  result += "$numDataPoints $numBins\n";
+
+  result +=
+      List.generate(numDataPoints, (index) => Random().nextInt(100000)).join(" ");
+
+  result += "\n";
+
+  return result;
+}
+
 class HistogramWidget extends StatefulWidget {
   HistogramWidget({Key? key}) : super(key: key);
 
@@ -74,6 +129,10 @@ class HistogramWidget extends StatefulWidget {
 
 class _HistogramWidgetState extends State<HistogramWidget> {
   int selectedHistogram = 0;
+
+  bool generatMode = false;
+  String generateText = "";
+  Histogram? generatedHistogram;
 
   @override
   Widget build(BuildContext context) {
@@ -90,10 +149,12 @@ class _HistogramWidgetState extends State<HistogramWidget> {
                 constrained: false,
                 boundaryMargin: const EdgeInsets.all(1000),
                 child: Chart(
+                  generatMode & (generatedHistogram != null) ? generatedHistogram! :
                   widget.histograms[selectedHistogram],
                   key: ValueKey(widget.histograms.isEmpty
                       ? ""
-                      : widget.histograms[selectedHistogram].out),
+                      : generatMode & (generatedHistogram != null) ? generatedHistogram!.out :
+                  widget.histograms[selectedHistogram].out),
                 ),
               ),
         SizedBox.expand(
@@ -125,12 +186,13 @@ class _HistogramWidgetState extends State<HistogramWidget> {
                                       vertical: 8.0, horizontal: 10.0),
                                   child: FloatingActionButton(
                                     mini: true,
-                                    backgroundColor: selectedHistogram ==
-                                            index + (index + outerIndex)
+                                    backgroundColor: (selectedHistogram ==
+                                            index + (index + outerIndex)) && !generatMode
                                         ? Colors.green
                                         : Colors.blue,
                                     onPressed: () {
                                       setState(() {
+                                        generatMode = false;
                                         selectedHistogram =
                                             index + (index + outerIndex);
                                       });
@@ -149,29 +211,71 @@ class _HistogramWidgetState extends State<HistogramWidget> {
                     : [
                         Padding(
                           padding: const EdgeInsets.symmetric(
-                              vertical: 8.0, horizontal: 20.0),
+                              vertical: 8.0, horizontal: 3.0),
                           child: FloatingActionButton.extended(
                             onPressed: () {
                               showDialog(
                                 context: context,
                                 builder: (BuildContext context) {
-                                  return AlertDialog(
-                                    content: SingleChildScrollView(
-                                      child: SelectableText(
-                                        widget.histograms.isEmpty
-                                            ? ""
-                                            : widget
-                                                .histograms[selectedHistogram]
-                                                .out,
-                                        style: const TextStyle(fontFamily: ''),
-                                      ),
-                                    ),
+                                  return StatefulBuilder(
+                                    builder: (context, setState) {
+                                      return AlertDialog(
+                                        content: SizedBox(
+                                                height: 500,
+                                                child: Column(
+                                                  children: [
+                                                    Expanded(
+                                                        child: TextField(
+                                                      controller:
+                                                          TextEditingController(
+                                                        text: generateText,
+                                                      ),
+                                                      onChanged: ((value) =>
+                                                          generateText = value),
+                                                      maxLines: null,
+                                                      decoration:
+                                                          const InputDecoration(
+                                                        labelText: "Input",
+                                                        border:
+                                                            OutlineInputBorder(),
+                                                      ),
+                                                    )),
+                                                    Padding(
+                                                      padding:
+                                                          const EdgeInsets.all(
+                                                              8.0),
+                                                      child:
+                                                          FloatingActionButton
+                                                              .extended(
+                                                        onPressed: () async {
+                                                          if (generateText
+                                                              .isEmpty) {
+                                                            setState(() {
+                                                              generateText =
+                                                                  generateInput();
+                                                            });
+                                                          } else {
+                                                            getGeneratedAnswer(generateText, this);
+                                                            Navigator.of(
+                                                                    context)
+                                                                .pop();
+                                                          }
+                                                        },
+                                                        label: const Text(
+                                                            "Generate"),
+                                                      ),
+                                                    )
+                                                  ],
+                                                ),
+                                              ),
+                                      );
+                                    },
                                   );
                                 },
                               );
                             },
-                            label: const Text("Input"),
-                            backgroundColor: Colors.blueGrey,
+                            label: const Text("Generate"),
+                            backgroundColor: generatMode ? Colors.green : Colors.blueGrey,
                           ),
                         )
                       ]),
@@ -220,8 +324,9 @@ class Painter extends CustomPainter {
     Offset yTickDistance = const Offset(0, -40);
     Offset yTextOffset = const Offset(-40, -10);
 
-    double greatest = max(bars.reduce(max), 1000);
-    greatest = ((greatest ~/ 1000) + (greatest % 1000 > 0 ? 1 : 0)) * 1000.0;
+    double greatest = bars.reduce(max);
+    final double tens = pow(10, greatest.toInt().toString().length - 1).toDouble();
+    greatest = ((greatest ~/ tens) + (greatest % tens > 0 ? 1 : 0)) * tens;
 
     List<double> yTicks = List.generate(11, (index) => index * (greatest / 10));
 
