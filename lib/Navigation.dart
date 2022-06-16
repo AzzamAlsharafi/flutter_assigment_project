@@ -30,6 +30,37 @@ Future<String> getPath(String from, String to, String out) async {
   return java.stdout.transform(utf8.decoder).first;
 }
 
+String generateInput() {
+  String result = "";
+
+  List<String> nodes =
+      List.generate(Random().nextInt(50) + 5, (index) => index.toString());
+
+  Set<String> paths = <String>{};
+
+  for (int i = 0; i < nodes.length * (2 + Random().nextDouble()); i++) {
+    int from = Random().nextInt(nodes.length);
+    int to = Random().nextInt(max(nodes.length - 1, 1));
+
+    if (to == from) {
+      to++;
+    }
+
+    paths.add("${nodes[from]} => ${nodes[to]}");
+  }
+
+  result += "1\r\n${paths.length}\r\n";
+
+  final list = paths.toList();
+  list.sort();
+
+  result += list.join("\r\n");
+
+  result += "\r\n1\r\n1\r\n";
+  
+  return result;
+}
+
 class NavigationWidget extends StatefulWidget {
   NavigationWidget({Key? key}) : super(key: key);
 
@@ -41,6 +72,10 @@ class NavigationWidget extends StatefulWidget {
 
 class _NavigationWidgetState extends State<NavigationWidget> {
   int selectedGraph = 0;
+
+  bool generateMode = false;
+  String generateText = "";
+  Graph? generateGraph;
 
   @override
   Widget build(BuildContext context) {
@@ -56,60 +91,128 @@ class _NavigationWidgetState extends State<NavigationWidget> {
 
     return Stack(
       children: [
-        widget.graphs.isEmpty ? const Center(child: CircularProgressIndicator()) : InteractiveViewer(
-          minScale: 0.5,
-          constrained: false,
-          boundaryMargin: const EdgeInsets.all(1000),
-          child: Scene(
-            widget.graphs[selectedGraph], key: ValueKey(widget.graphs.isEmpty? "" : widget.graphs[selectedGraph].out),
-          ),
-        ),
-        SizedBox.expand(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: 
-              (widget.graphs.isEmpty ? <Widget>[] : <Widget>[
-                Padding(
-                  padding: const EdgeInsets.all(5.0),
-                  child: FloatingActionButton.extended(onPressed: () {}, label: const Text("Test cases"), backgroundColor: Colors.blueGrey
-                  ,),
-                )
-              ]) +
-              List<Widget>.generate(
-                widget.graphs.length,
-                (index) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 32.0),
-                  child: FloatingActionButton(
-                    backgroundColor:
-                        selectedGraph == index ? Colors.green : Colors.blue,
-                    onPressed: () {
-                      setState(() {
-                        selectedGraph = index;
-                      });
-                    },
-                    child: Text((index + 1).toString()),
-                  ),
+        widget.graphs.isEmpty
+            ? const Center(child: CircularProgressIndicator())
+            : InteractiveViewer(
+                minScale: 0.5,
+                constrained: false,
+                boundaryMargin: const EdgeInsets.all(1000),
+                child: Scene(
+                  generateMode && (generateGraph != null)
+                      ? generateGraph!
+                      : widget.graphs[selectedGraph],
+                  key: ValueKey(widget.graphs.isEmpty
+                      ? ""
+                      : (generateMode && (generateGraph != null)
+                          ? generateGraph!.out
+                          : widget.graphs[selectedGraph].out)),
                 ),
-              ) + (widget.graphs.isEmpty ? [] : [
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 20.0),
-                  child: FloatingActionButton.extended(onPressed: () {
-                    showDialog(context: context, builder: 
-                      (BuildContext context){
-                        return AlertDialog(
-                          content: SingleChildScrollView(child: SelectableText(
-                            widget.graphs.isEmpty ? "" : widget.graphs[selectedGraph].getOutWithoutExtra(),
-                            style: const TextStyle(fontFamily: ''),
-                          ),),
-                        );
-                      }
-                    );
-                  }, label: const Text("Input"), backgroundColor: Colors.blueGrey
-                  ,),
-                )
-              ]),
-            ),
+              ),
+        SizedBox.expand(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: (widget.graphs.isEmpty
+                    ? <Widget>[]
+                    : <Widget>[
+                        Padding(
+                          padding: const EdgeInsets.all(5.0),
+                          child: FloatingActionButton.extended(
+                            onPressed: () {},
+                            label: const Text("Test cases"),
+                            backgroundColor: Colors.blueGrey,
+                          ),
+                        )
+                      ]) +
+                List<Widget>.generate(
+                  widget.graphs.length,
+                  (index) => Padding(
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 8.0, horizontal: 32.0),
+                    child: FloatingActionButton(
+                      backgroundColor:
+                          selectedGraph == index && !generateMode ? Colors.green : Colors.blue,
+                      onPressed: () {
+                        setState(() {
+                          selectedGraph = index;
+                          generateMode = false;
+                        });
+                      },
+                      child: Text((index + 1).toString()),
+                    ),
+                  ),
+                ) +
+                (widget.graphs.isEmpty
+                    ? []
+                    : [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 8.0, horizontal: 5.0),
+                          child: FloatingActionButton.extended(
+                            onPressed: () {
+                              showDialog(
+                                  context: context,
+                                  builder: (BuildContext context) {
+                                    return StatefulBuilder(
+                                        builder: (context, setStateDialog) {
+                                      return AlertDialog(
+                                        content: SizedBox(
+                                          height: 500,
+                                          child: Column(
+                                            children: [
+                                              Expanded(
+                                                  child: TextField(
+                                                controller:
+                                                    TextEditingController(
+                                                  text: generateText,
+                                                ),
+                                                onChanged: ((value) =>
+                                                    generateText = value),
+                                                maxLines: null,
+                                                decoration:
+                                                    const InputDecoration(
+                                                  labelText: "Input",
+                                                  border: OutlineInputBorder(),
+                                                ),
+                                              )),
+                                              Padding(
+                                                padding:
+                                                    const EdgeInsets.all(8.0),
+                                                child: FloatingActionButton
+                                                    .extended(
+                                                  onPressed: () async {
+                                                    if (generateText.isEmpty) {
+                                                      setStateDialog(() {
+                                                        generateText =
+                                                            generateInput();
+                                                      });
+                                                    } else {
+                                                      setState(() {
+                                                        generateGraph =
+                                                            Graph(generateText);
+                                                        generateMode = true;
+                                                      });
+
+                                                      Navigator.of(context)
+                                                          .pop();
+                                                    }
+                                                  },
+                                                  label: const Text("Generate"),
+                                                ),
+                                              )
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    });
+                                  });
+                            },
+                            label: const Text("Generate"),
+                            backgroundColor: generateMode ? Colors.green : Colors.blueGrey,
+                          ),
+                        )
+                      ]),
+          ),
         ),
       ],
     );
@@ -257,7 +360,7 @@ class Node extends StatelessWidget {
             } else if (state.secondSelected == data) {
               state.secondSelected = "";
             } else if (state.selected == "") {
-              if(state.secondSelected != ""){
+              if (state.secondSelected != "") {
                 state.selected = state.secondSelected;
                 state.secondSelected = data;
               } else {
@@ -309,14 +412,14 @@ class Graph {
   final Map<String, List<String>> _graph = {};
   final Map<String, List<double>> _positions = {};
 
-  String getOutWithoutExtra(){
-    final split = out.split("\r\n");
+  String getOutWithoutExtra() {
+    final split = const LineSplitter().convert(out);
     return split.getRange(1, split.length - 3).join("\r\n");
   }
 
   Map<String, List<String>> getGraph() {
     if (_graph.isEmpty) {
-      final entries = out.split("\r\n");
+      final entries = const LineSplitter().convert(out);
       for (final String entry in entries) {
         if (!entry.contains(" => ")) {
           continue;
