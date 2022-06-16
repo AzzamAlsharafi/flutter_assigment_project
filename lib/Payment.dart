@@ -58,8 +58,16 @@ class _PaymentWidgetState extends State<PaymentWidget> {
       ready.clear();
       setState(() {
         for (var id in readyBuffer) {
+          if(!queue.containsKey(id)){
+            remove.add(id);
+          }
           ready.add(id);
           queue.remove(id);
+        }
+        for(var id in remove){
+          if(queue.containsKey(id)){
+            queue.remove(id);
+          }
         }
       });
       readyBuffer.clear();
@@ -131,7 +139,7 @@ class _PaymentWidgetState extends State<PaymentWidget> {
   int currentTime = -1;
 
   // delay ranges: 0 .. 1000 .. 1000000
-  int timeDelay =  1000; // delay in microseconds before each timer update
+  int timeDelay = 1000; // delay in microseconds before each timer update
   int timeIncrease =
       0; // amount of time to add to the timer each time it updates, in milliseconds
   int timeIncreaseMemory =
@@ -140,6 +148,7 @@ class _PaymentWidgetState extends State<PaymentWidget> {
   Map<String, List<String>> queue = {};
   List<String> readyBuffer = [];
   List<String> ready = [];
+  List<String> remove = [];
 
   bool error = false;
   bool done = false;
@@ -178,7 +187,8 @@ class _PaymentWidgetState extends State<PaymentWidget> {
                     child: ListView.builder(
                       itemCount: queue.length,
                       itemBuilder: (context, index) {
-                        return QueueItemWidget(queue[queue.keys.elementAt(index)]!);
+                        return QueueItemWidget(
+                            queue[queue.keys.elementAt(index)]!);
                       },
                     )
                     // SingleChildScrollView(
@@ -375,7 +385,8 @@ class ReadyIdsWidget extends StatelessWidget {
 }
 
 class ClockWidget extends StatefulWidget {
-  const ClockWidget(this.time, this.error, this.done, this.onPress, this.onSlide,
+  const ClockWidget(
+      this.time, this.error, this.done, this.onPress, this.onSlide,
       {Key? key})
       : super(key: key);
 
